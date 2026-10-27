@@ -32,6 +32,7 @@ function showStep(number) {
 }
 function choose(type) {
   selected = type;
+  document.getElementById('lead-furniture').value = type;
   document.querySelectorAll('[data-choice]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.choice === type)));
 }
 function openBrief(type, trigger) {
@@ -63,7 +64,6 @@ document.getElementById('to-step3').onclick = () => {
     (wishes ? 'Пожелания: ' + wishes + '\n' : '') +
     '\nХочу обсудить комплектацию, стоимость, сроки изготовления, доставку, сборку, гарантию и условия замера.';
   document.getElementById('request-preview').textContent = message;
-  document.getElementById('lead-message').value = message;
   showStep(3);
 };
 form.addEventListener('submit', async event => {
@@ -92,7 +92,7 @@ form.addEventListener('submit', async event => {
     sent = true;
     form.reset();
     document.getElementById('back2').hidden = true;
-    setStatus('Заявка отправлена! Мы свяжемся с вами по указанному телефону.', 'success');
+    window.location.assign(new URL('thank-you.html', document.baseURI).href);
   } catch (error) {
     const message = error.name === 'AbortError' ? 'Не удалось получить подтверждение отправки. Попробуйте позже или свяжитесь с нами по телефону.' : error instanceof TypeError ? 'Нет связи с сервером. Проверьте подключение и попробуйте ещё раз.' : error.message;
     setStatus(message, 'error');
