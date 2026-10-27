@@ -9,11 +9,10 @@ declare(strict_types=1);
 // ВАЖНО: имена в FORM_CONFIG должны совпадать с атрибутами name="..." в HTML.
 // Меняешь поля формы — правь HTML и FORM_CONFIG одним коммитом.
 
-header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 
 const FORM_CONFIG = [
-    'required' => ['phone', 'consent'],        // без этих полей заявка не принимается
+    'required' => ['furniture', 'phone', 'consent'], // данные брифа и контакты обязательны
     'email' => '',                             // в форме нет email: обратная связь по телефону
     'honeypot' => 'website',                   // поле-ловушка для ботов; пустая строка — выключено
     'max_length' => 5000,                      // предел длины одного поля
@@ -21,12 +20,37 @@ const FORM_CONFIG = [
 ];
 
 /**
- * Ответ и выход: клиент всегда получает JSON, а не HTML-ошибку.
+ * AJAX получает JSON; обычная отправка — редирект или страницу ошибки.
  */
 function respond(int $status, array $payload): void
 {
+    header('Cache-Control: no-store');
+    $accept = (string) ($_SERVER['HTTP_ACCEPT'] ?? '');
+    if (stripos($accept, 'application/json') !== false) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code($status);
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($status === 200 && ($payload['ok'] ?? false) === true) {
+        header('Location: ../thank-you.html', true, 303);
+        exit;
+    }
+
     http_response_code($status);
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    header('Content-Type: text/html; charset=utf-8');
+    $messages = $payload['errors'] ?? [$payload['error'] ?? 'Не удалось отправить заявку.'];
+    $message = htmlspecialchars(implode(' ', $messages), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    echo '<!doctype html><html lang="ru"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<meta name="robots" content="noindex,nofollow"><title>Заявка не отправлена — Киви Мебель</title>'
+        . '<link rel="stylesheet" href="../css/style.css"></head><body>'
+        . '<main class="wrap section confirmation"><div class="eyebrow">Киви Мебель</div>'
+        . '<h1>Заявка не отправлена</h1><p>' . $message . '</p>'
+        . '<p>Вернитесь назад, чтобы проверить данные, или свяжитесь с нами по телефону '
+        . '<a href="tel:+79869397372">+7 (986) 939-73-72</a>.</p>'
+        . '<a class="button" href="../index.html">На главную ↗</a></main></body></html>';
     exit;
 }
 
@@ -95,6 +119,14 @@ if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
     $errors[] = 'Поле «' . $emailField . '»: некорректный email.';
 }
 
+// Тип мебели проверяется независимо от JavaScript, чтобы не терять первый шаг.
+if (isset($fields['furniture']) && !in_array($fields['furniture'], [
+    'Кухня', 'Шкаф-купе', 'Гардеробная', 'Прихожая',
+    'Детская мебель', 'Офисная мебель', 'Другая мебель',
+], true)) {
+    $errors[] = 'Выберите тип мебели из списка.';
+}
+
 // Проверяем контакты на сервере: браузерную валидацию можно обойти.
 if (isset($fields['phone'])) {
     $phone = $fields['phone'];
@@ -139,8 +171,16 @@ $prefix = env('MAIL_SUBJECT_PREFIX');
 $subject = mb_encode_mimeheader(trim('Заявка с сайта ' . $prefix), 'UTF-8', 'B');
 
 $body = "Дата заявки: " . date(DATE_ATOM) . "\n\n";
+$labels = [
+    'furniture' => 'Мебель',
+    'dimensions' => 'Примерные размеры',
+    'message' => 'Пожелания',
+    'name' => 'Имя',
+    'phone' => 'Телефон',
+    'consent' => 'Согласие на обработку данных',
+];
 foreach ($fields as $fieldName => $value) {
-    $body .= $fieldName . ': ' . $value . "\n";
+    $body .= ($labels[$fieldName] ?? $fieldName) . ': ' . $value . "\n";
 }
 
 $headers = [

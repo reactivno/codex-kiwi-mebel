@@ -14,3 +14,7 @@ dialog .lead-consent span{font-size:12px;line-height:1.6;color:var(--ink);margin
 .lead-status[data-state="error"]{color:#a2402b}
 .lead-status[data-state="success"]{color:var(--green)}
 .button:disabled{opacity:.65;transform:none}
+.confirmation{max-width:800px;min-height:60vh;padding-block:70px}
+.confirmation h1{font-size:clamp(34px,6vw,56px);line-height:1.12;font-weight:400;letter-spacing:-.035em;margin:0 0 24px}
+.confirmation>p{max-width:580px;margin:24px 0}
+.confirmation a:focus-visible{outline:3px solid #7f9a47;outline-offset:4px}
