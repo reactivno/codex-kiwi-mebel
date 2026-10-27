@@ -14,7 +14,7 @@ header('X-Content-Type-Options: nosniff');
 
 const FORM_CONFIG = [
     'required' => ['phone', 'consent'],        // без этих полей заявка не принимается
-    'email' => 'email',                        // поле с email; пустая строка — проверки нет
+    'email' => '',                             // в форме нет email: обратная связь по телефону
     'honeypot' => 'website',                   // поле-ловушка для ботов; пустая строка — выключено
     'max_length' => 5000,                      // предел длины одного поля
     'max_body' => 65536,                       // предел размера всей заявки
@@ -48,7 +48,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 
 $honeypot = FORM_CONFIG['honeypot'];
-if ($honeypot !== '' && trim((string) ($_POST[$honeypot] ?? '')) !== '') {
+if ($honeypot !== '' && isset($_POST[$honeypot]) && (!is_string($_POST[$honeypot]) || trim($_POST[$honeypot]) !== '')) {
     respond(200, ['ok' => true]); // боту отвечаем как обычно, письмо не шлём
 }
 
@@ -95,6 +95,18 @@ if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
     $errors[] = 'Поле «' . $emailField . '»: некорректный email.';
 }
 
+// Проверяем контакты на сервере: браузерную валидацию можно обойти.
+if (isset($fields['phone'])) {
+    $phone = $fields['phone'];
+    $digits = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($phone) > 40 || preg_match('/^[+0-9()\s.\-]+$/D', $phone) !== 1 || strlen($digits) < 7 || strlen($digits) > 15) {
+        $errors[] = 'Телефон: укажите корректный номер (от 7 до 15 цифр).';
+    }
+}
+if (isset($fields['consent']) && $fields['consent'] !== '1') {
+    $errors[] = 'Подтвердите согласие на обработку данных.';
+}
+
 if ($bodySize > FORM_CONFIG['max_body']) {
     respond(413, ['ok' => false, 'error' => 'Заявка слишком большая.']);
 }
@@ -126,7 +138,7 @@ if (filter_var($from, FILTER_VALIDATE_EMAIL) === false) {
 $prefix = env('MAIL_SUBJECT_PREFIX');
 $subject = mb_encode_mimeheader(trim('Заявка с сайта ' . $prefix), 'UTF-8', 'B');
 
-$body = '';
+$body = "Дата заявки: " . date(DATE_ATOM) . "\n\n";
 foreach ($fields as $fieldName => $value) {
     $body .= $fieldName . ': ' . $value . "\n";
 }
