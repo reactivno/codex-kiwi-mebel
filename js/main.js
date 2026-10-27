@@ -1,49 +1,18 @@
-const form = document.getElementById("lead-form");
-const status = document.getElementById("lead-status");
-const submit = form.querySelector('button[type="submit"]');
-
-// На стенде GitHub Pages нет PHP: отправку отключаем, иначе пользователь
-// получит ошибку сети вместо понятного сообщения.
-const isStand = location.hostname.endsWith("github.io");
-
-if (isStand) {
-  submit.disabled = true;
-  status.textContent = "Тестовый стенд: отправка формы отключена.";
-}
-
-// Проверка в браузере — только подсказка; сервер проверяет поля заново.
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  if (isStand) {
-    return;
-  }
-
-  status.className = "form__status";
-  status.textContent = "Отправляем…";
-  submit.disabled = true;
-
-  try {
-    const response = await fetch(form.action, {
-      method: "POST",
-      body: new FormData(form),
-      headers: { Accept: "application/json" },
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (response.ok && data.ok) {
-      form.reset();
-      status.textContent = "Заявка отправлена. Мы свяжемся с вами.";
-    } else {
-      status.className = "form__status form__status--error";
-      status.textContent = (
-        data.errors || [data.error || "Не удалось отправить заявку."]
-      ).join(" ");
-    }
-  } catch {
-    status.className = "form__status form__status--error";
-    status.textContent = "Сеть недоступна. Попробуйте ещё раз.";
-  } finally {
-    submit.disabled = false;
-  }
-});
+const brief=document.getElementById('brief-dialog');
+let selected='',opener=null,dialogOpener=null;
+const progress=[...document.querySelectorAll('.progress span')];
+function showStep(number){for(let i=1;i<=3;i++)document.getElementById('brief-step'+i).hidden=i!==number;progress.forEach((s,i)=>s.classList.toggle('active',i===number-1));document.getElementById('type-error').textContent='';if(number===2)document.getElementById('chosen-type').textContent=selected;brief.scrollTop=0;const target=number===1?brief.querySelector('[data-choice]'):number===2?document.getElementById('dimensions'):document.getElementById('finish');target.focus();}
+function choose(type){selected=type;document.querySelectorAll('[data-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.choice===type)));}
+function openBrief(type,trigger){opener=trigger||document.activeElement;choose(type||'');document.getElementById('dimensions').value='';document.getElementById('wishes').value='';document.getElementById('request-preview').textContent='';brief.showModal();showStep(1);}
+document.querySelectorAll('[data-brief]').forEach(b=>b.addEventListener('click',()=>openBrief(b.dataset.type,b)));
+document.querySelectorAll('[data-choice]').forEach(b=>b.addEventListener('click',()=>{choose(b.dataset.choice);document.getElementById('type-error').textContent='';}));
+document.getElementById('to-step2').onclick=()=>{if(!selected){document.getElementById('type-error').textContent='Выберите тип мебели, чтобы продолжить.';return;}showStep(2);};
+document.getElementById('back1').onclick=()=>showStep(1);document.getElementById('back2').onclick=()=>showStep(2);
+document.getElementById('to-step3').onclick=()=>{const dimensions=document.getElementById('dimensions').value.trim(),wishes=document.getElementById('wishes').value.trim();document.getElementById('request-preview').textContent='Здравствуйте! Хочу обсудить мебель на заказ.\n\nТип мебели: '+selected+'.\n'+(dimensions?'Примерные размеры: '+dimensions+'\n':'Размеры пока не определены.\n')+(wishes?'Пожелания: '+wishes+'\n':'')+'\nПодскажите варианты комплектации и стоимость. Также хочу уточнить сроки изготовления, доставку, сборку, гарантию и условия замера.';showStep(3);};
+document.getElementById('finish').onclick=()=>brief.close();
+brief.addEventListener('close',()=>{selected='';document.getElementById('dimensions').value='';document.getElementById('wishes').value='';document.getElementById('request-preview').textContent='';if(opener?.isConnected)opener.focus();});
+const menu=document.querySelector('.menu'),nav=document.getElementById('nav');menu.onclick=()=>{const open=nav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));};nav.querySelectorAll('a').forEach(a=>a.onclick=()=>{nav.classList.remove('open');menu.setAttribute('aria-expanded','false');});
+const filters=[...document.querySelectorAll('[data-filter]')],projects=[...document.querySelectorAll('.project')];filters.forEach(b=>b.onclick=()=>{filters.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));let count=0;projects.forEach(p=>{p.hidden=b.dataset.filter!=='all'&&p.dataset.category!==b.dataset.filter;if(!p.hidden)count++;});document.getElementById('filter-status').textContent='Показано примеров: '+count;});
+const photo=document.getElementById('photo-dialog');document.querySelectorAll('[data-photo]').forEach(b=>b.onclick=()=>{dialogOpener=b;document.getElementById('photo-title').textContent=b.dataset.title;const img=document.getElementById('photo-full');img.src=b.dataset.photo;img.alt=b.dataset.title;photo.showModal();});photo.addEventListener('close',()=>dialogOpener?.focus());
+const contact=document.getElementById('contact-dialog');document.querySelectorAll('[data-contact]').forEach(b=>b.onclick=()=>{dialogOpener=b;contact.showModal();});contact.addEventListener('close',()=>dialogOpener?.focus());document.getElementById('contact-brief').onclick=()=>{const trigger=dialogOpener;contact.close();openBrief('',trigger);};
+document.querySelectorAll('dialog').forEach(d=>{d.querySelector('.dialog-close').onclick=()=>d.close();d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});});
